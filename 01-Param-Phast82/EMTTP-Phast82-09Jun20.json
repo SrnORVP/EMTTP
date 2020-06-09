@@ -1,8 +1,12 @@
 {
-"long_Row" : ["Scen", "Hole", "Weat"],
-"long_Col" : "EndPoint@@DistType",
+"long_Idx" : ["Scen", "Hole", "Weat"],
+"long_Col_Name" : "EndPoint@@DistType",
 "wide_Idx" : ["Scen", "Hole", "EndPoint", "Weat", "DistType"],
 "wide_Col" : ["Weat", "DistType"],
 "fill_n/a" : null,
-"isDataBase" : false
+"isDataBase" : false,
+"isTransform" : true,
+"tran_Idx" : ["Scen", "Hole", "EndPoint", "Weat"],
+"tran_Col" : ["DistType"],
+"tran_ColSel": ["Scen", "Hole", "EndPoint", "Weat", "P1-d", "P2-c", "P3-s", "P4-m"]
 }
