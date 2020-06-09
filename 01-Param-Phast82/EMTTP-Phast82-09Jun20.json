@@ -1,0 +1,8 @@
+{
+"long_Row" : ["Scen", "Hole", "Weat"],
+"long_Col" : "EndPoint@@DistType",
+"wide_Idx" : ["Scen", "Hole", "EndPoint", "Weat", "DistType"],
+"wide_Col" : ["Weat", "DistType"],
+"fill_n/a" : null,
+"isDataBase" : false
+}
