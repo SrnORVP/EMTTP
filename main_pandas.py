@@ -14,11 +14,11 @@ strEMTTP_Input = strProjID + '-QRA' + '.xlsx'
 strEMTTP_Output = strProjID + '-EMTTP' + '.xlsx'
 
 # Relative path and File name of General Param Inputs
-arrParaPath = ['.', '01-Param-Phast82']
-strEMTTP_Param = 'EMTTP-Phast82-09Jun20' + '.xlsx'
-strEMTTP_Pjson = 'EMTTP-Phast82-09Jun20' + '.json'
+strParaID = 'Phast82'
+arrParaPath = ['.', '01-Param-'+strParaID]
+strEMTTP_Param = strParaID + '-EMTTP' + '.xlsx'
+strEMTTP_Pjson = strParaID + '-EMTTP' + '.json'
 
-# isCheckValid = False
 
 #-----------------------------------------------------------------------------------------------------------------------
 #-----------------------------------------------------------------------------------------------------------------------

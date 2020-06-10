@@ -17,83 +17,85 @@ dfTrans_grp = pd.read_excel(os.path.join(*arrParaPath, strEMTTP_Param), sheet_na
 
 # Import json params
 with open(os.path.join(*arrParaPath, strEMTTP_Pjson)) as fileJSON:
-    dictMetaParam = json.load(fileJSON)
+    dictParam = json.load(fileJSON)
 
 
 # Get dict of columns for rename and reindex for each event
-dictEvet_dictColSel = dict()
-for strTab, dfEvetParam in dfParam_grp:
-    dictEvet_dictColSel.update(dfEvetParam.pivot(index='strTab', columns='strCol', values='strIdx').to_dict('index'))
-dictEvet_dictTrnsFm = dict()
-for strTab, dfTranParam in dfTrans_grp:
-    dictEvet_dictTrnsFm.update(dfTranParam.pivot(index='strTab', columns='strTar', values='strTrans').to_dict('index'))
+dictParam_dictColSel = dict()
+for strTab, dfColParam in dfParam_grp:
+    dictParam_dictColSel.update(dfColParam.pivot(index='strTab', columns='strCol', values='strIdx').to_dict('index'))
+dictParam_dictTrnsFm = dict()
+for strTab, dfTrnsParam in dfTrans_grp:
+    dictParam_dictTrnsFm.update(dfTrnsParam.pivot(index='strTab', columns='strTar', values='strTrans').to_dict('index'))
 
 
-# Rename and reindex DataFrame for each event
-dictExcel_ftd = dict()
-for strTab, dictColSel in dictEvet_dictColSel.items():
-    dfExcelTab = dictExcel[strTab].reindex(columns=[*dictColSel.keys()])
-    dfExcelTab = dfExcelTab.rename(columns=dictColSel)
-    dictExcel_ftd[strTab] = dfExcelTab
-
-
+# Rename and reindex DataFrame for each tab
 # Pivot long on DataFrame for each event based on param in json
-dictExcel_Pivot = dict()
-for strTab, dfTemp in dictExcel_ftd.items():
-    dfTemp = dfTemp.melt(id_vars=dictMetaParam['long_Idx'], var_name=dictMetaParam['long_Col_Name'])
-    dictExcel_Pivot[strTab] = dfTemp
+# Force numeric on 'value' col
+dictExcel_Long = dict()
+for strTab, dictColSel in dictParam_dictColSel.items():
+    dfMelt = dictExcel[strTab].reindex(columns=[*dictColSel.keys()]).rename(columns=dictColSel)
+    dfMelt = dfMelt.melt(id_vars=dictParam['melt_Index'], var_name=dictParam['melt_Col_Name'])
+    if dictParam['isForceNumeric']:
+        dfMelt['value'] = pd.to_numeric(dfMelt['value'], errors='coerce')
+    dictExcel_Long[strTab] = dfMelt
 
 
-# Expand the var_name column
-for strTab, dfPivot in dictExcel_Pivot.items():
-    arrColName = dictMetaParam['long_Col_Name'].split('@@')
-    dictRename = dict(zip(range(len(arrColName)), arrColName))
-    dfTemp = dfPivot[dictMetaParam['long_Col_Name']]
-    dfTemp = dfTemp.str.split('@@', expand=True).rename(columns=dictRename)
-    dfPivot = dfPivot.merge(dfTemp, left_index=True, right_index=True).drop(columns=dictMetaParam['long_Col_Name'])
-    dictExcel_Pivot[strTab] = dfPivot
+# Expand the melt_Col_Name column 
+for strTab, dfMerge in dictExcel_Long.items():
+    arrExpandCol = dictParam['melt_Col_Name'].split('@@')
+    dictRename = dict(zip(range(len(arrExpandCol)), arrExpandCol))
+    dfExpandCol = dfMerge[dictParam['melt_Col_Name']]
+    dfExpandCol = dfExpandCol.str.split('@@', expand=True).rename(columns=dictRename)
+    dfMerge = dfMerge.merge(dfExpandCol, left_index=True, right_index=True).drop(columns=dictParam['melt_Col_Name'])
+    dictExcel_Long[strTab] = dfMerge
+
+
+# Parse columns
+arrAllCol = dictParam['pivot_Index'] + dictParam['pivot_Cols']
+arrNoValueCol = arrAllCol.copy()
+arrNoValueCol.remove(arrExpandCol[-1])
+strValueCol = arrExpandCol[-1]
+
+
+def Pivot_on_Config(dictInput_dfTabs, arrPivotIndex, arrPivotCols, strFillna=None, isDataBase=False):
+    dictOutput_dfTabs = dict()
+    for strTab, dfTabs in dictInput_dfTabs.items():
+        dfTabs = dfTabs.sort_values(arrPivotIndex + arrPivotCols)
+        if arrPivotCols:
+            dfTabs = pd.pivot_table(dfTabs, index=arrPivotIndex, columns=arrPivotCols, values='value',
+                                    fill_value=strFillna, dropna=False)
+        if isDataBase:
+            dfTabs = dfTabs.reset_index()
+        dictOutput_dfTabs[strTab] = dfTabs
+    return dictOutput_dfTabs
 
 
 # Pivot Wide based on User Configuration
-dictExcel_RawParam = dict()
-for strTab, dfPivot in dictExcel_Pivot.items():
-    dfTemp = dfPivot.set_index(dictMetaParam['wide_Idx'])
-    dfTemp = dfTemp.sort_index()
-    if dictMetaParam['wide_Col']:
-        dfTemp = dfTemp.unstack(dictMetaParam['wide_Col'], fill_value=dictMetaParam['fill_n/a'])
-        dfTemp.columns = dfTemp.columns.droplevel(0)
-    if dictMetaParam['isDataBase']:
-        dfTemp = dfTemp.reset_index()
-    dictExcel_RawParam[strTab] = dfTemp
-
+dictExcel_RawParam = Pivot_on_Config(dictExcel_Long, dictParam['pivot_Index'], dictParam['pivot_Cols'],
+                                     dictParam['pivot_fillna'], dictParam['isDataBase'])
 
 # Transform Value based on formula
-dictExcel_Trans = dict()
-if dictMetaParam['isTransform']:
-    for strTab, dfPivot in dictExcel_Pivot.items():
-        dfPivot['value'] = pd.to_numeric(dfPivot['value'], errors='coerce')
-        dfPivot = pd.pivot_table(dfPivot, index=dictMetaParam['tran_Idx'], columns=dictMetaParam['tran_Col'], values='value')
-        for strTar, strTrans in dictEvet_dictTrnsFm[strTab].items():
-            dfPivot[strTar] = dfPivot.apply(lambda x: eval(str(strTrans), {'x': x}), axis=1)
-        dfPivot = dfPivot.reset_index().reindex(columns=dictMetaParam['tran_ColSel'])
-        dfPivot = dfPivot.melt(id_vars=dictMetaParam['tran_Idx'], var_name=dictMetaParam['tran_Col'])
-        dictExcel_Trans[strTab] = dfPivot
+dictExcel_Trnsfm = dict()
+if dictParam['isTransform']:
+    for strTab, dfLong in dictExcel_Long.items():
+        dfLong = pd.pivot_table(dfLong, index=["Scen", "Hole", "EndPoint","Weat"], columns='DistType', values='value',
+                                fill_value=dictParam['pivot_fillna'], dropna=False)
+        for strTar, strTrns in dictParam_dictTrnsFm[strTab].items():
+            dfLong[strTar] = dfLong.apply(lambda x: eval(str(strTrns), {'x': x}), axis=1)
+        dfLong = dfLong.reset_index().reindex(columns=dictParam['transform_Select_Cols'])
+        dfLong = dfLong.melt(id_vars=arrNoValueCol, var_name=strValueCol)
+        dictExcel_Trnsfm[strTab] = dfLong
 
-    for strTab, dfPivot in dictExcel_Trans.items():
-        dfTemp = dfPivot.set_index(dictMetaParam['wide_Idx'])
-        dfTemp = dfTemp.sort_index()
-        if dictMetaParam['wide_Col']:
-            dfTemp = dfTemp.unstack(dictMetaParam['wide_Col'], fill_value=dictMetaParam['fill_n/a'])
-            dfTemp.columns = dfTemp.columns.droplevel(0)
-        if dictMetaParam['isDataBase']:
-            dfTemp = dfTemp.reset_index()
-        dictExcel_Trans[strTab] = dfTemp
+    # Pivot Wide based on User Configuration
+    dictExcel_Trnsfm = Pivot_on_Config(dictExcel_Trnsfm, dictParam['pivot_Index'], dictParam['pivot_Cols'],
+                                         dictParam['pivot_fillna'], dictParam['isDataBase'])
 
 
 # Export
 with pd.ExcelWriter(os.path.join(*arrProjPath, strEMTTP_Output), 'openpyxl') as xwr:
     for strTab, df in dictExcel_RawParam.items():
-        df.to_excel(xwr, strTab+'_raw')
-    if dictMetaParam['isTransform']:
-        for strTab, df in dictExcel_Trans.items():
-            df.to_excel(xwr, strTab+'_trans')
+        if dictParam['isExportRaw']:
+            df.to_excel(xwr, strTab+'_raw')
+        if dictParam['isTransform']:
+            dictExcel_Trnsfm[strTab].to_excel(xwr, strTab+'_tfd')
