@@ -1,0 +1,15 @@
+{
+"bypassed_tabs": ["Toxic Lethality"],
+"isForceNumeric" : true,
+"melt_Index" : ["Scen", "Hole", "Weat", "RelRate", "EndPoint"],
+"melt_Col_Name" : "DistType",
+
+"isTransform" : true,
+"transform_Select_Cols": ["Scen", "Hole", "Weat", "RelRate", "EndPoint", "P1-d", "P2-c", "P3-s", "P4-m"],
+
+"pivot_Index" : ["Scen", "Hole", "Weat", "RelRate", "EndPoint"],
+"pivot_Cols" : ["DistType"],
+"pivot_FillEmptyValue" : 0,
+"isDataBase" : true,
+"isRemoveNull" : true
+}
