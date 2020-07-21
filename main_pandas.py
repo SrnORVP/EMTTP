@@ -13,7 +13,7 @@ strEMTTP_Input = strProjID + '-QRA' + '.xlsx'
 strEMTTP_Output = strProjID + '-EMTTP Output' + '.xlsx'
 
 # Relative path and File name of General Param Inputs
-strParaID = strProjID
+strParaID = 'Phast67'
 arrParaPath = ['.', 'Param-'+strParaID]
 strEMTTP_Param = strParaID + '-EMTTP' + '.xlsx'
 strEMTTP_Pjson = strParaID + '-EMTTP' + '.json'
